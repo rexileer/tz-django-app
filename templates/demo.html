@@ -1,0 +1,43 @@
+{% extends 'base.html' %}
+{% load menu_tags %}
+
+{% block title %}{{ title }} — Django Tree Menu{% endblock %}
+
+{% block sidebar %}
+<aside class="sidebar">
+    <h2>Основное меню</h2>
+    {% draw_menu 'main_menu' %}
+    
+    <div class="footer-menu">
+        <h2>Дополнительное меню</h2>
+        {% draw_menu 'footer_menu' %}
+    </div>
+</aside>
+{% endblock %}
+
+{% block content %}
+<h1>{{ title }}</h1>
+<p>
+    Это демо-страница для тестирования древовидного меню.
+    Кликайте по пунктам меню слева, чтобы увидеть как меню автоматически 
+    раскрывается и подсвечивает активный путь.
+</p>
+
+<div class="current-url">
+    <strong>Текущий URL:</strong> {{ request.path }}
+</div>
+
+<p style="margin-top: 2rem;">
+    <strong>Особенности:</strong>
+</p>
+<ul style="margin-top: 1rem; color: #a1a1aa; line-height: 1.8; padding-left: 1.5rem;">
+    <li>Меню загружается <strong>одним запросом к БД</strong></li>
+    <li>Все пункты над активным — развернуты</li>
+    <li>Первый уровень под активным — тоже развернут</li>
+    <li>На странице два разных меню (main_menu и footer_menu)</li>
+    <li>URL может быть явным или через named url</li>
+</ul>
+{% endblock %}
+
+
+
