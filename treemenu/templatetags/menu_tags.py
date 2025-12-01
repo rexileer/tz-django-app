@@ -10,15 +10,14 @@ def build_tree(items):
     Строит дерево из плоского списка элементов.
     Возвращает (items_dict, root_items).
     
-    ВАЖНО: Это ключевая оптимизация - строим дерево в Python,
-    а не делаем N+1 запросов к БД.
+    Ключевая оптимизация: вместо N+1 запросов к БД строим дерево в памяти.
     """
     items_dict = {}
     root_items = []
     
-    # Первый проход: индексируем все элементы
+    # Первый проход: создаём индекс id -> item
     for item in items:
-        item.children_list = []  # Динамический атрибут для детей
+        item.children_list = []  # Добавляем список для детей
         items_dict[item.id] = item
     
     # Второй проход: связываем родителей с детьми
@@ -28,6 +27,7 @@ def build_tree(items):
             if parent:
                 parent.children_list.append(item)
         else:
+            # Если нет родителя - это корневой элемент
             root_items.append(item)
     
     return items_dict, root_items
@@ -93,7 +93,11 @@ def render_menu_items(items, active_id, active_path, items_dict):
         class_str = f' class="{" ".join(classes)}"' if classes else ''
         
         html.append(f'<li{class_str}>')
-        html.append(f'<a href="{item.get_url()}">{item.title}</a>')
+        # Экранируем HTML вручную, т.к. используем mark_safe
+        # TODO: возможно стоит использовать escape() из django.utils.html
+        title_escaped = str(item.title).replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;')
+        url = item.get_url()
+        html.append(f'<a href="{url}">{title_escaped}</a>')
         
         # Рекурсивно рендерим детей если нужно раскрыть
         if item.children_list and should_expand:
@@ -119,13 +123,13 @@ def draw_menu(context, menu_name):
     request = context.get('request')
     current_url = request.path if request else ''
     
-    # === ЕДИНСТВЕННЫЙ ЗАПРОС К БД ===
+    # Единственный запрос к БД - получаем все элементы меню сразу
     items = list(MenuItem.objects.filter(menu_name=menu_name))
     
     if not items:
         return ''
     
-    # Строим дерево в памяти
+    # Строим дерево в памяти (без дополнительных запросов)
     items_dict, root_items = build_tree(items)
     
     # Находим активный путь

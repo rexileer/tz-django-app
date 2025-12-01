@@ -1,5 +1,6 @@
 from django.db import models
 from django.urls import reverse, NoReverseMatch
+from django.core.exceptions import ValidationError
 
 
 class MenuItem(models.Model):
@@ -47,9 +48,32 @@ class MenuItem(models.Model):
         verbose_name = 'Пункт меню'
         verbose_name_plural = 'Пункты меню'
         ordering = ['order', 'title']
+        indexes = [
+            models.Index(fields=['menu_name', 'order']),  # Составной индекс для сортировки
+        ]
 
     def __str__(self):
         return f'{self.menu_name}: {self.title}'
+    
+    def clean(self):
+        """Валидация модели перед сохранением"""
+        # Защита от циклических ссылок
+        if self.parent_id and self.parent_id == self.pk:
+            raise ValidationError({'parent': 'Пункт не может быть родителем самого себя'})
+        
+        # Родитель должен быть из того же меню
+        if self.parent and self.parent.menu_name != self.menu_name:
+            raise ValidationError({
+                'parent': 'Родительский пункт должен быть из того же меню'
+            })
+        
+        # URL не обязателен - если не указан, будет '#'
+        # (валидация не нужна, это нормальное поведение)
+    
+    def save(self, *args, **kwargs):
+        """Переопределяем save для валидации"""
+        self.full_clean()
+        super().save(*args, **kwargs)
 
     def get_url(self):
         """
@@ -60,6 +84,8 @@ class MenuItem(models.Model):
             try:
                 return reverse(self.named_url)
             except NoReverseMatch:
+                # Если named_url не найден, возвращаем '#'
+                # В production можно добавить логирование
                 return '#'
         if self.url:
             return self.url
